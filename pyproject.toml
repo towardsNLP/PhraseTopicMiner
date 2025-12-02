@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "phrasetopicminer"
+version = "0.1.0"
+description = "Phrase-centric topic mining, clustering, timelines, visualization, and LLM-backed topic labeling."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }  # or "Proprietary" / whichever you choose
+
+authors = [
+  { name = "Ahmad Hashemi" }
+]
+
+keywords = [
+  "nlp", "topic-modeling", "phrase-mining",
+  "clustering", "visualization", "argument-mining"
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core runtime deps (no viz/agents yet)
+dependencies = [
+  "numpy>=1.24,<2.0",
+  "pandas>=2.2,<2.4",
+  "scikit-learn>=1.5,<1.8",
+  "sentence-transformers>=3.0,<3.5",
+  "spacy>=3.7,<3.9",
+  "umap-learn>=0.5.5,<0.6",
+  "hdbscan>=0.8.0,<0.9",
+  "beautifulsoup4>=4.12,<5",
+  "Markdown>=3.5,<3.8",
+  "nltk>=3.9,<4",
+  "pydantic>=2.8,<3",
+  # Plotly + DataMapPlot visualizations
+  "plotly>=5.20,<6",
+  "datamapplot>=0.6.4,<0.7",
+  # LLM-backed topic labeling using the Agents SDK
+  "openai-agents>=0.6.1", 
+]
+
+[project.optional-dependencies]
+# Plotly + DataMapPlot visualizations
+viz = [
+  "plotly>=5.20,<6",
+  "datamapplot>=0.6.4,<0.7",
+]
+
+# LLM-backed topic labeling using the Agents SDK
+agents = [
+  "openai-agents>=1.4.0,<2",
+]
+
+[project.urls]
+Homepage = "https://github.com/ahmad-hashemi/PhraseTopicMiner"   # or future repo
+Source = "https://github.com/ahmad-hashemi/PhraseTopicMiner"
+Issues = "https://github.com/ahmad-hashemi/PhraseTopicMiner/issues"
