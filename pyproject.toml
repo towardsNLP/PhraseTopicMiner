@@ -62,6 +62,6 @@ agents = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ahmad-hashemi/PhraseTopicMiner"   # or future repo
-Source = "https://github.com/ahmad-hashemi/PhraseTopicMiner"
-Issues = "https://github.com/ahmad-hashemi/PhraseTopicMiner/issues"
+Homepage = "https://github.com/towardsNLP/PhraseTopicMiner"
+Source = "https://github.com/towardsNLP/PhraseTopicMiner"
+Issues = "https://github.com/towardsNLP/PhraseTopicMiner/issues"
