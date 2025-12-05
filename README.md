@@ -736,13 +736,9 @@ Planned future work:
 
 Issues and pull requests are welcome.
 
-- **Bug reports**: please include a minimal reproducible example (even 2–3
+- **Bug reports**: please include a minimal reproducible example (even 2–3 short docs are enough).
     
-    short docs are enough).
-    
-- **Feature requests**: describe your use-case (research, product analytics,
-    
-    history of ideas, etc.) so we can keep the library grounded in real workflows.
+- **Feature requests**: describe your use-case (research, product analytics, history of ideas, etc.) so we can keep the library grounded in real workflows.
     
 
 
@@ -757,7 +753,7 @@ If you use PhraseTopicMiner in academic work, you’re encouraged (but not requi
 
 ## About the author
 
-[**Ahmad Hashemi**](https://www.linkedin.com/in/ahmad-hashemi-oxford/) is an NLP data scientist and Principal NLP engineer with a DPhil (PhD) in Philosophy from the University of Oxford, specializing in intellectual history and the history of political ideas.
+[**Ahmad Hashemi**](https://www.linkedin.com/in/ahmad-hashemi-oxford/) is an NLP data scientist with a rich background in philosophy, specializing in intellectual history and the history of political ideas.
 
 PhraseTopicMiner grew out of a long-standing question:
 
