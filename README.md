@@ -5,7 +5,7 @@ topics as **clusters of phrases**, not bags of single words.
 
 Most classic topic models (LDA and friends) work at the **word level**:
 
-- They fragment expressions like`topic model`, `topic modeling`, `probabilistic topic models` into partially disconnected tokens.
+- They fragment expressions like `topic model`, `topic modeling`, `probabilistic topic models` into partially disconnected tokens.
 - They ignore the **multi-word phrases** that humans actually track as conceptual units.
 - They give you topics that often read like noisy bags of words.
 
@@ -138,89 +138,8 @@ The minimal example from above, shortened a bit for the README:
 ```python
 import phrasetopicminer as ptm
 
-# 1) A small corpus
-docs = [
-    # Doc 1 – phrase-centric topic modeling basics
-    """
-    Phrase-based topic modeling treats noun phrases and verb phrases as the
-    main carriers of meaning in a document collection. Instead of working at
-    the level of single tokens, we mine phrases such as "neural topic model",
-    "customer feedback", or "research pipeline". This phrase-centric view makes
-    clusters easier to interpret, because each topic is anchored in human
-    readable expressions rather than abstract word distributions.
-    """,
-
-    # Doc 2 – applications to meeting notes
-    """
-    In recurring team meetings, the same themes appear again and again:
-    roadmap decisions, technical debt, customer pain points, and hiring plans.
-    PhraseTopicMiner can mine key phrases from the transcripts, cluster them
-    into topics, and then project those phrase clusters into a two-dimensional
-    map. Each cluster becomes a labeled island of discussion, helping product
-    and engineering leaders see which themes dominate the conversation over time.
-    """,
-
-    # Doc 3 – research literature exploration
-    """
-    When exploring a new research field, we often read dozens of papers without
-    a clear overview of the main conceptual structure. By extracting phrases
-    such as "contrastive learning objective", "causal inference", or "human
-    evaluation protocol" from abstracts and introductions, PhraseTopicMiner
-    builds a geometric map of ideas. The resulting clusters highlight families
-    of methods, evaluation strategies, and application domains in a way that is
-    visually intuitive and analytically useful.
-    """,
-
-    # Doc 4 – product discovery & user interviews
-    """
-    User interview transcripts are full of recurring expressions: people
-    describe friction, workarounds, and desired outcomes in surprisingly
-    consistent language. A phrase-centric topic model can surface patterns like
-    "manual spreadsheet export", "notification overload", or "difficult onboarding
-    experience". Clustering those phrases reveals coherent themes in the voice
-    of the user, which can then be prioritized and tracked across releases.
-    """,
-
-    # Doc 5 – educational content analysis
-    """
-    Educators working with large collections of lecture notes, assignments, and
-    discussion forum posts often struggle to see which concepts confuse students
-    the most. Mining phrases such as "backpropagation intuition", "regularization
-    trade-off", or "evaluation metric" and grouping them into topics provides a
-    living map of conceptual difficulty. This can guide revision of teaching
-    materials and the design of targeted practice exercises.
-    """,
-
-    # Doc 6 – monitoring conceptual drift over time
-    """
-    Over time, the language of a project, product, or research field evolves.
-    New phrases appear while others gradually disappear. PhraseTopicMiner can
-    track phrase clusters as timelines, showing when ideas emerge, stabilize,
-    or fade out. This temporal view helps teams notice conceptual drift early
-    and decide whether it reflects healthy innovation or a loss of focus.
-    """,
-
-    # Doc 7 – History of Ideas / Intellectual History
-    """
-    In the history of ideas and intellectual history, we often track how key
-    concepts are articulated, contested, and transformed across different
-    genres of writing: pamphlets, newspaper articles, treatises, and speeches.
-    Instead of counting single words like "freedom" or "despotism", a
-    phrase-centric topic model focuses on richer expressions such as
-    "freedom under law", "arbitrary royal power", "constitutional limits",
-    "rights of the people", or "religious authority".
-
-    By mining and clustering these multi-word phrases, PhraseTopicMiner can
-    surface distinct conceptual constellations that correspond to competing
-    vocabularies of freedom, authority, and community. Each cluster becomes a
-    map of how authors link key ideas together in practice, not just in theory.
-    When we add a temporal dimension, these phrase clusters can be followed
-    across years or decades, revealing when certain constellations emerge,
-    overlap, or decline. This complements close reading: the historian still
-    interprets texts line by line, but now against a geometric overview of
-    conceptual change in the archive.
-    """,
-]
+# 1) Prepare a corpus: one raw text string per document
+docs = [...]  # e.g. ["First document text...", "Second document text...", ...]
 
 # 2) Phrase mining: NP/VP extraction with sentence linkage
 miner = ptm.PhraseMiner(spacy_model="en_core_web_sm")
@@ -245,7 +164,7 @@ core_result = modeler.fit_core(
 
 print(core_result.phrases_df[["phrase", "count", "cluster_id"]].head())
 
-# 4) Visualize
+# 4) Visualize phrase topics as an interactive bubble map
 bubble_fig = ptm.plot_phrase_bubble_map(core_result)
 bubble_fig.show()
 
