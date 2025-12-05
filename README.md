@@ -5,7 +5,7 @@ topics as **clusters of phrases**, not bags of single words.
 
 Most classic topic models (LDA and friends) work at the **word level**:
 
-- They fragment expressions like`topic model`, `topic modeling`, `probabilistic topic models`into partially disconnected tokens.
+- They fragment expressions like`topic model`, `topic modeling`, `probabilistic topic models` into partially disconnected tokens.
 - They ignore the **multi-word phrases** that humans actually track as conceptual units.
 - They give you topics that often read like noisy bags of words.
 
@@ -485,9 +485,9 @@ bubble_fig.show()
 treemap_fig.show()
 
 
-for i in range(len(core.clusters)):
-    cluster_to_show = core.clusters[i].cluster_id
-    ptm.plot_topic_timeline(timeline, cluster_id=cluster_to_show, time_unit="min").show()
+for i in range(len(core_result.clusters)):
+    cluster_to_show = core_result.clusters[i].cluster_id
+    ptm.plot_topic_timeline(timeline_result=timeline, cluster_id=cluster_to_show, time_unit="min").show()
     
 ```
 
@@ -728,6 +728,97 @@ Because topics are defined as **clusters of phrases**, each of which is tied bac
 > 
 
 
+## How does PhraseTopicMiner relate to LDA and BERTopic?
+
+PhraseTopicMiner sits in the same *problem space* as classical LDA and BERTopic — but it makes different bets about what a “topic” is and which object you want to model.
+
+### LDA (Latent Dirichlet Allocation)
+
+LDA is a generative Bayesian model that treats:
+
+- each document as a **mixture of topics**, and
+- each topic as a **distribution over words** (bag-of-words, no order).
+
+**When LDA is a good fit:**
+
+- You have a **large corpus** (thousands to millions of docs).
+- You want **document–topic distributions** (e.g., for downstream classifiers or recommender systems).
+- You’re okay with topics being somewhat noisy or abstract word bags.
+- You don’t need a tight link back to multi-word phrases or sentence-level context.
+
+**Limitations relative to PhraseTopicMiner:**
+
+- Works at the **token** level, not phrase level.
+- Phrase variants like `"topic model"`, `"topic modeling"`, `"probabilistic topic models"` are scattered across word distributions instead of forming a single conceptual unit.
+- No native notion of **timelines** or **phrase–sentence mappings**.
+
+### BERTopic
+
+BERTopic is a modern, embedding-based topic model. Roughly:
+
+- Embed documents with a transformer.
+- Reduce dimensionality with **UMAP**.
+- Cluster with **HDBSCAN**.
+- Use **class-based TF–IDF (c-TF-IDF)** to extract representative words per topic.
+
+The unit of modeling is still the **document**, and the topics are ultimately described as bags of words / n-grams.
+
+**When BERTopic is a good fit:**
+
+- You have many **short documents** (tweets, reviews, tickets, etc.).
+- You want a **document → topic** assignment with modern embeddings.
+- You like the built-in tooling: dynamic topic modeling, topic reduction/merging, etc.
+- You’re okay with topics being expressed as **ranked word lists**.
+
+**Limitations relative to PhraseTopicMiner:**
+
+- Embeddings are for documents, not individual phrases; you see which docs belong to a topic, not a phrase-centric geometry.
+- Topics are still **word bags** summarizing clusters of documents — less control over the **lexical grammar** of what counts as a meaningful concept.
+- No first-class notion of **timelines over phrase clusters** or **explicit NP/VP patterns**.
+
+### PhraseTopicMiner
+
+PhraseTopicMiner flips the perspective:
+
+- The primary unit is the **phrase** (especially noun phrases, optionally verb phrases).
+- We embed **phrases**, not documents.
+- Clustering happens in **phrase space**, then we map clusters back to:
+    - supporting sentences,
+    - documents,
+    - and timelines.
+
+You can always derive document-level information afterwards (e.g., “which documents contain phrases from topic 7?”), but the core object is the **conceptual constellation of phrases**.
+
+**When PhraseTopicMiner is a good fit:**
+
+- You want a **concept map** of a corpus, not just a doc → topic table.
+- You care about **multi-word concepts** being preserved:
+    - "freedom under law", "arbitrary royal power", "customer pain points", "contrastive learning objective".
+- You want to pivot between:
+    - **geometry** (phrase clusters),
+    - **language** (the exact phrases),
+    - **context** (sentences, documents),
+    - **time** (timelines).
+- Your corpora are:
+    - small-to-medium sized, or
+    - deep / high-value (meeting transcripts, interviews, research notes, archival texts), where interpretability matters more than squeezing out every last topic from millions of docs.
+
+**When LDA / BERTopic might be preferable:**
+
+- You need **scalable, document-level topic distributions** for thousands or millions of items and don’t require phrase-level detail.
+- You’re integrating into existing pipelines that already assume **LDA-style outputs** (topic-word and doc-topic matrices).
+- You mostly want to label documents with a few topic tags and don’t need:
+    - phrase grammars,
+    - detailed sentence contexts,
+    - or conceptual timelines.
+
+In short:
+
+- **LDA** → classic, probabilistic, token-level topics over huge corpora.
+- **BERTopic** → doc-level, embedding-based topics with strong tooling and word-based topic descriptions.
+- **PhraseTopicMiner** → phrase-level, geometry-first, with built-in timelines and a tight phrase–sentence–time interface for **interpreting** conceptual structure.
+
+---
 
 ## Roadmap
 
