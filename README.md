@@ -1,14 +1,7 @@
 # PhraseTopicMiner
 
-**Phrase-centric topic mining, clustering, timelines, visualization, and LLM-backed labeling.**
-
-
-
-> Instead of treating documents as bags of tokens, PhraseTopicMiner treats **multi-word phrases** as the main carriers of meaning — then builds a **geometric map of ideas** over your corpus.
-> 
-
-
-## Why phrase-centric topic modeling?
+**PhraseTopicMiner** is a small but opinionated Python library for discovering
+topics as **clusters of phrases**, not bags of single words.
 
 Most classic topic models (LDA and friends) work at the **word level**:
 
