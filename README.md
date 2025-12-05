@@ -678,4 +678,4 @@ PhraseTopicMiner grew out of a long-standing question:
 > How can we give machines a more human way of “seeing” the conceptual structure of a corpus, not just as statistics over words, but as evolving constellations of phrases?
 > 
 
-If this resonates with your work (research or product), feel free to reach out via GitHub or LinkedIn.
+If this resonates with your work (research or product), feel free to reach out via GitHub or [LinkedIn](https://www.linkedin.com/in/ahmad-hashemi-oxford/).
