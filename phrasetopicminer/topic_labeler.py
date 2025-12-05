@@ -5,25 +5,42 @@ topic_labeler.py
 
 LLM-backed topic labeling for PhraseTopicMiner.
 
-This module takes the geometric / statistical output of TopicModeler
+This module takes the geometric/statistical output of TopicModeler
 (TopicCoreResult + phrase_occurrences) plus raw sentence text and uses
-an LLM (via the OpenAI Agents SDK) to generate a short title and
-description for each phrase cluster.
+an LLM to generate a short title and description for each phrase cluster.
 
+It is deliberately *LLM- and framework-agnostic*. You can plug in:
 
-Pipeline:
-------------
+1. A simple LLM callable (recommended default)
+   - Pass `llm=` as a sync or async callable: `prompt: str -> str`.
+   - TopicLabeler handles asyncio under the hood; user code stays simple.
+
+2. A LangChain / chat model wrapper
+   - Wrap your `ChatOpenAI` (or similar) in a tiny adapter that
+     turns `prompt: str` into a `str` response, and pass that as `llm=`.
+
+3. The OpenAI Agents SDK
+   - Pass an `Agent` instance via `agent=...`.
+   - TopicLabeler will call `Runner.run(...)` under a `trace(...)` context
+     so you get full traces in the OpenAI Platform when labeling topics.
+
+Pipeline
+--------
 - Input: TopicCoreResult (from TopicModeler.fit_core) + sentences_by_doc
 - Build per-cluster inputs (phrases + counts + example sentences)
-- Use an Agent (LLM-agnostic) to label each cluster with:
-    * short title (3–6 words)
-    * short description (2–4 sentences)
-- Output: TopicLabelingResult with labels_by_cluster + cluster_name_map
+- Call the configured LLM backend for each cluster
+- Parse / validate JSON into TopicLabelModel objects
+- Output: TopicLabelingResult with:
+    * labeled_clusters (full audit trail per topic),
+    * labels_by_cluster (cluster_id → TopicLabelModel),
+    * cluster_name_map (cluster_id → title string for plots/treemaps).
 """
+
 
 from __future__ import annotations
 
 import asyncio
+import inspect
 from datetime import datetime
 import json
 from dataclasses import dataclass
@@ -58,18 +75,18 @@ class TopicLabelModel(BaseModel):
     Attributes
     ----------
     title:
-        Short human-readable name for the topic (3–6 words is ideal).
+        Short human-readable name for the topic (3–8 words is ideal).
     description:
-        Concise 2–4 sentence explanation of what this topic is about.
+        Concise 2–6 sentence explanation of what this topic is about.
     """
 
     title: str = Field(
         ...,
-        description="Short, 3–6 word title naming the topic.",
+        description="Short, 3–8 word title naming the topic.",
     )
     description: str = Field(
         ...,
-        description="2–4 sentence description of the topic.",
+        description="2–6 sentence description of the topic.",
     )
 
 
@@ -174,23 +191,37 @@ class TopicLabelingResult:
 
 class TopicLabeler:
     """
-    LLM-backed topic labeling helper using the OpenAI Agents SDK.
+    LLM-backed topic labeling helper.
 
-    Design
-    ------
-    - You pass in an `Agent` instance that encapsulates the model +
-      base instructions (similar to your sales agents example).
-    - TopicLabeler constructs per-cluster prompts and calls
-      `Runner.run(agent, prompt)` under a `trace(...)` context, so you
-      can inspect sessions in the OpenAI traces UI.
-    - Logging is injected via `log_fn`, so the same core code works
-      with `print`, `st.markdown`, Rich, etc.
+    Two ways to use it
+    ------------------
+    1) With the OpenAI Agents SDK (original design):
+
+        from agents import Agent
+        topic_agent = Agent(...)
+        labeler = TopicLabeler(agent=topic_agent, ...)
+
+    2) With a generic LLM object or callable (LLM-agnostic):
+
+        # simplest: pass a function that returns a string
+        def simple_llm(prompt: str) -> str:
+            ...
+
+        labeler = TopicLabeler(llm=simple_llm, ...)
+
+        # or pass a LangChain ChatOpenAI, which has .invoke() / .ainvoke():
+        from langchain_openai import ChatOpenAI
+        lc_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        labeler = TopicLabeler(llm=lc_llm, ...)
+
+    Exactly one of `agent` or `llm` must be provided.
     """
 
     def __init__(
         self,
-        agent: Agent,
+        agent: Optional[Agent] = None,
         *,
+        llm: Optional[Any] = None,
         max_phrases_per_cluster: int = 25,
         max_sentences_per_cluster: int = 40,
         include_noise: bool = False,
@@ -201,8 +232,17 @@ class TopicLabeler:
         Parameters
         ----------
         agent:
-            An `Agent` instance from the Agents SDK. This should already
-            have your high-level instructions and model configured.
+            Optional `Agent` instance from the OpenAI Agents SDK.
+            If provided, TopicLabeler will call `Runner.run(agent, prompt)`.
+        llm:
+            Optional generic LLM backend. Can be either:
+
+            - a callable:  `str -> str` or `str -> Awaitable[str]`
+            - or an object with `.invoke(prompt)` / `.ainvoke(prompt)`
+              (e.g. LangChain's `ChatOpenAI`).
+
+            If `agent` is None and `llm` is provided, TopicLabeler
+            will use this backend instead of Agents.
         max_phrases_per_cluster:
             Maximum number of phrases (sorted by frequency) to send
             to the LLM for each cluster.
@@ -220,7 +260,16 @@ class TopicLabeler:
                 - `st.write` / `st.markdown` (Streamlit)
                 - any custom logger you like
         """
-        self.agent = agent
+        if (agent is None) == (llm is None):
+            raise ValueError(
+                "TopicLabeler expects exactly one of `agent` or `llm`.\n"
+                "Pass an OpenAI Agents `Agent` via `agent=`, or a plain "
+                "LLM callable / object via `llm=`."
+            )
+
+        self.agent: Optional[Agent] = agent
+        self.llm: Optional[Any] = llm
+
         self.max_phrases_per_cluster = max_phrases_per_cluster
         self.max_sentences_per_cluster = max_sentences_per_cluster
         self.include_noise = include_noise
@@ -465,7 +514,7 @@ class TopicLabeler:
             "topic_modeler_config": core_result.config,
         }
 
-        self._log("[TopicLabeler] Labeling complete.")
+        self._log("[TopicLabeler] ✅  Labeling complete.")
         return TopicLabelingResult(
             labeled_clusters=labeled_clusters,
             labels_by_cluster=labels_by_cluster,
@@ -609,15 +658,98 @@ class TopicLabeler:
     # Internal helpers – LLM call & prompt
     # ------------------------------------------------------------------
 
+    async def _call_llm(self, prompt: str, cluster_id: int) -> str:
+        """
+        Unified LLM call.
+
+        - If `self.agent` is set, use the OpenAI Agents Runner.
+        - Otherwise, use `self.llm`:
+
+            * callable(prompt)  -> text or awaitable
+            * or object with .ainvoke(prompt) / .invoke(prompt)
+              (LangChain-style).
+        """
+        # --- 1) Agents SDK path -----------------------------------------
+        if self.agent is not None:
+            if Runner is None:
+                raise RuntimeError(
+                    "TopicLabeler was configured with `agent=...`, but the "
+                    "`agents` package is not installed."
+                )
+
+            with trace(
+                f"label_cluster_{cluster_id}_{datetime.utcnow().isoformat()}"
+            ):
+                result = await Runner.run(self.agent, prompt)
+
+            raw = getattr(result, "final_output", "") or ""
+            return raw.strip()
+
+        # --- 2) Generic LLM path ---------------------------------------
+        if self.llm is None:
+            raise RuntimeError(
+                "TopicLabeler has neither `agent` nor `llm` configured."
+            )
+
+        backend = self.llm
+
+        # (a) Bare callable: func(prompt) -> text or awaitable
+        if callable(backend) and not hasattr(backend, "invoke") and not hasattr(backend, "ainvoke"):
+            out = backend(prompt)
+            if inspect.isawaitable(out):
+                out = await out
+
+        # (b) LangChain-style: has .ainvoke(prompt)
+        elif hasattr(backend, "ainvoke"):
+            out = await backend.ainvoke(prompt)
+
+        # (c) LangChain-style: has .invoke(prompt)
+        elif hasattr(backend, "invoke"):
+            out = backend.invoke(prompt)
+
+        else:
+            raise TypeError(
+                "llm= must be either a callable, or an object with "
+                "an `.invoke(prompt)` or `.ainvoke(prompt)` method."
+            )
+
+        # --- 3) Normalise various outputs to a plain string ------------
+
+        # simple string
+        if isinstance(out, str):
+            return out.strip()
+
+        # LangChain messages (have `.content`)
+        content = getattr(out, "content", None)
+        if content is not None:
+            return str(content).strip()
+
+        # OpenAI-style responses with .choices[0].message.content
+        choices = getattr(out, "choices", None)
+        if choices:
+            first = choices[0]
+            msg = getattr(first, "message", None) or getattr(first, "delta", None)
+            if msg is not None and getattr(msg, "content", None) is not None:
+                return str(msg.content).strip()
+
+        # dict-like { "text": "..."} or {"content": "..."}
+        if isinstance(out, dict):
+            for key in ("text", "content", "output"):
+                if key in out:
+                    return str(out[key]).strip()
+
+        # last-resort fallback
+        return str(out).strip()
+        
+
     async def _label_single_cluster(
         self,
         cluster_input: ClusterLabelingInput,
     ) -> ClusterLabelingResult:
         """
-        Call the Agent once to label a single cluster.
+        Label a single cluster using either an Agents `Agent` or a generic LLM.
 
-        Uses `Runner.run` under its own `trace`, mirroring the
-        pattern from the official Agents examples.
+        The actual backend is decided by `_call_llm`.
 
         Returns
         -------
@@ -628,15 +760,13 @@ class TopicLabeler:
         prompt = self._build_prompt(cluster_input)
 
         self._log(
-            f"[TopicLabeler] Calling agent for cluster {cluster_input.cluster_id}..."
+            f"[TopicLabeler] Calling LLM for cluster {cluster_input.cluster_id}..."
         )
 
-        with trace(f"label_cluster_{cluster_input.cluster_id}_{datetime.utcnow().isoformat()}"):
-            result = await Runner.run(self.agent, prompt)
+        raw_output = await self._call_llm(prompt, cluster_input.cluster_id)
 
-        raw_output = (result.final_output or "").strip()
         self._log(
-            f"[TopicLabeler] Agent output for cluster {cluster_input.cluster_id}: "
+            f"[TopicLabeler] LLM output for cluster {cluster_input.cluster_id}: "
             f"{raw_output[:120]}{'...' if len(raw_output) > 120 else ''}"
         )
 
@@ -671,8 +801,8 @@ class TopicLabeler:
                 - A small set of example sentences where these phrases occur.
                 
                 Your task for this ONE topic is to:
-                1. Propose a short, 3–6 word title that best names the topic.
-                2. Write a concise, 2–4 sentence description of what this topic is about.
+                1. Propose a short, 3–8 word title that best names the topic.
+                2. Write a concise, 2–6 sentence description of what this topic is about.
                 
                 Guidelines:
                 - Focus ONLY on the phrases and sentences provided.
@@ -683,7 +813,7 @@ class TopicLabeler:
                 
                 {{
                   "title": "short title here",
-                  "description": "2–4 sentence description here"
+                  "description": "2–6 sentence description here"
                 }}
                 
                 Do not include any additional text, commentary, markdown, or code fences.
