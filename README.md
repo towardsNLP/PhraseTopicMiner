@@ -88,7 +88,7 @@ Mathematically, the modeling happens in **phrase space**; interpretation and val
         - 2D phrase map with cluster colors and frequency-scaled bubbles.
     - `plot_phrase_treemap(core_result, ...)`
         - Treemap of phrase clusters (“topic constellations”).
-    - `plot_topic_timeline(core_result, timeline_result, cluster_id, ...)`
+    - `plot_topic_timeline(timeline_result, cluster_id, ...)`
         - Topic intensity over time, linked back to phrases.
 - 🤖 **LLM-backed topic labels (experimental)**
     - Optional `TopicLabeler` that takes phrase clusters + representative
@@ -140,10 +140,86 @@ import phrasetopicminer as ptm
 
 # 1) A small corpus
 docs = [
-    "PhraseTopicMiner treats recurring noun phrases as the conceptual skeleton of a text.",
-    "Instead of modeling single words, it clusters phrases like 'topic modeling' and "
-    " 'customer pain points'.",
-    "From these phrase clusters, you get topic maps, timelines, and LLM-backed labels.",
+    # Doc 1 – phrase-centric topic modeling basics
+    """
+    Phrase-based topic modeling treats noun phrases and verb phrases as the
+    main carriers of meaning in a document collection. Instead of working at
+    the level of single tokens, we mine phrases such as "neural topic model",
+    "customer feedback", or "research pipeline". This phrase-centric view makes
+    clusters easier to interpret, because each topic is anchored in human
+    readable expressions rather than abstract word distributions.
+    """,
+
+    # Doc 2 – applications to meeting notes
+    """
+    In recurring team meetings, the same themes appear again and again:
+    roadmap decisions, technical debt, customer pain points, and hiring plans.
+    PhraseTopicMiner can mine key phrases from the transcripts, cluster them
+    into topics, and then project those phrase clusters into a two-dimensional
+    map. Each cluster becomes a labeled island of discussion, helping product
+    and engineering leaders see which themes dominate the conversation over time.
+    """,
+
+    # Doc 3 – research literature exploration
+    """
+    When exploring a new research field, we often read dozens of papers without
+    a clear overview of the main conceptual structure. By extracting phrases
+    such as "contrastive learning objective", "causal inference", or "human
+    evaluation protocol" from abstracts and introductions, PhraseTopicMiner
+    builds a geometric map of ideas. The resulting clusters highlight families
+    of methods, evaluation strategies, and application domains in a way that is
+    visually intuitive and analytically useful.
+    """,
+
+    # Doc 4 – product discovery & user interviews
+    """
+    User interview transcripts are full of recurring expressions: people
+    describe friction, workarounds, and desired outcomes in surprisingly
+    consistent language. A phrase-centric topic model can surface patterns like
+    "manual spreadsheet export", "notification overload", or "difficult onboarding
+    experience". Clustering those phrases reveals coherent themes in the voice
+    of the user, which can then be prioritized and tracked across releases.
+    """,
+
+    # Doc 5 – educational content analysis
+    """
+    Educators working with large collections of lecture notes, assignments, and
+    discussion forum posts often struggle to see which concepts confuse students
+    the most. Mining phrases such as "backpropagation intuition", "regularization
+    trade-off", or "evaluation metric" and grouping them into topics provides a
+    living map of conceptual difficulty. This can guide revision of teaching
+    materials and the design of targeted practice exercises.
+    """,
+
+    # Doc 6 – monitoring conceptual drift over time
+    """
+    Over time, the language of a project, product, or research field evolves.
+    New phrases appear while others gradually disappear. PhraseTopicMiner can
+    track phrase clusters as timelines, showing when ideas emerge, stabilize,
+    or fade out. This temporal view helps teams notice conceptual drift early
+    and decide whether it reflects healthy innovation or a loss of focus.
+    """,
+
+    # Doc 7 – History of Ideas / Intellectual History
+    """
+    In the history of ideas and intellectual history, we often track how key
+    concepts are articulated, contested, and transformed across different
+    genres of writing: pamphlets, newspaper articles, treatises, and speeches.
+    Instead of counting single words like "freedom" or "despotism", a
+    phrase-centric topic model focuses on richer expressions such as
+    "freedom under law", "arbitrary royal power", "constitutional limits",
+    "rights of the people", or "religious authority".
+
+    By mining and clustering these multi-word phrases, PhraseTopicMiner can
+    surface distinct conceptual constellations that correspond to competing
+    vocabularies of freedom, authority, and community. Each cluster becomes a
+    map of how authors link key ideas together in practice, not just in theory.
+    When we add a temporal dimension, these phrase clusters can be followed
+    across years or decades, revealing when certain constellations emerge,
+    overlap, or decline. This complements close reading: the historian still
+    interprets texts line by line, but now against a geometric overview of
+    conceptual change in the archive.
+    """,
 ]
 
 # 2) Phrase mining: NP/VP extraction with sentence linkage
@@ -160,21 +236,17 @@ modeler = ptm.TopicModeler(
     random_state=42,
 )
 
-core = modeler.fit_core(
+core_result = modeler.fit_core(
     phrase_records=phrase_records,
     sentences_by_doc=sentences_by_doc,
-    include_kinds={"NP"},
-    include_patterns={"BaseNP", "NP+PP", "NP+multiPP"},
-    min_freq_unigram=2,
-    min_freq_bigram=1,
-    min_freq_trigram_plus=1,
+    include_kinds={"NP"},          # only NP; use {"NP", "VP"} to include both
     verbose=True,
 )
 
-print(core.topics_df[["cluster_id", "size", "top_phrase"]].head())
+print(core_result.phrases_df[["phrase", "count", "cluster_id"]].head())
 
 # 4) Visualize
-bubble_fig = ptm.plot_phrase_bubble_map(core)
+bubble_fig = ptm.plot_phrase_bubble_map(core_result)
 bubble_fig.show()
 
 ```
@@ -215,18 +287,13 @@ ptm.make_datamapplot_interactive
 ```python
 miner = ptm.PhraseMiner(spacy_model="en_core_web_sm", max_docs=None, logger=None)
 
-np_counter, vp_counters, phrase_records, sentences_by_doc = miner.mine_phrases_with_types(
-        docs,
-        keep_serial_comma=True,
-        drop_parenthetical_phrases=True,
-    )
+np_counter, vp_counters, phrase_records, sentences_by_doc = miner.mine_phrases_with_types(texts=docs)
+
 ```
 
 - `np_counter`: `Counter[str, int]` of canonical noun phrases.
 - `vp_counters`: dict of verb-phrase counters per pattern (if enabled).
-- `phrase_records`: list of `PhraseRecord`, each with:
-    - `phrase`, `canonical`, `kind`, `pattern`,
-    - `doc_index`, `sent_index`, character offsets.
+- `phrase_records`: list of `PhraseRecord` objects for *all* NP/VP occurrences across all documents.
 - `sentences_by_doc`: list of per-document lists of sentence texts.
 
 ### Phrase patterns: how NP / VP extraction works
@@ -327,70 +394,114 @@ modeler = ptm.TopicModeler(
     random_state=42,
 )
 
-core = modeler.fit_core(
+core_result = modeler.fit_core(
+    # --- required core inputs ---
     phrase_records=phrase_records,
     sentences_by_doc=sentences_by_doc,
-    include_kinds={"NP"},
-    include_patterns={"BaseNP", "NP+PP", "NP+multiPP"},
-    min_freq_unigram=2,
-    min_freq_bigram=1,
-    min_freq_trigram_plus=1,
-    pca_n_components=10,
-    cluster_geometry="umap_nd",   # or "umap_2d"
-    umap_n_neighbors=10,
-    umap_min_dist=0.05,
-    umap_cluster_n_components=10,
-    clustering_algorithm="hdbscan",  # or "kmeans"
+
+    # --- phrase filtering options ---
+    include_kinds={"NP", "VP"},          # only NP; use {"NP", "VP"} to include both
+    include_patterns={"BaseNP", "NP+PP", "NP+multiPP", 
+                      "VerbObj", "VerbPP", "SubjVerb"
+                      },  # or e.g. {"BaseNP", "NP+PP"}
+    min_freq_unigram=3,            # threshold for 1-word phrases
+    min_freq_bigram=1,             # threshold for 2-word phrases
+    min_freq_trigram_plus=1,       # threshold for >=3-word phrases
+
+    # --- geometric pipeline options ---
+    pca_n_components=10,           # 0 or None if you want to skip PCA
+    cluster_geometry="umap_2d",    # "umap_nd" or "umap_2d"
+    umap_n_neighbors=5,
+    umap_min_dist=0.1,
+    umap_cluster_n_components=10,  # target dim for clustering (if using umap_nd)
+
+    # --- clustering options ---
+    clustering_algorithm="hdbscan",   # "hdbscan" or "kmeans"
     hdbscan_min_cluster_size=5,
-    kmeans_max_clusters=20,
-    viz_reducer="tsne_2d",      # "same" | "umap_2d" | "tsne_2d"
+    hdbscan_min_samples=None,
+    hdbscan_metric="euclidean",
+    kmeans_max_clusters=15,          # used only if clustering_algorithm="kmeans"
+
+    # --- visualization geometry ---
+    viz_reducer="tsne_2d",           # "same", "umap_2d", or "tsne_2d"
+    tsne_perplexity=30.0,
+    tsne_learning_rate=200.0,
+    tsne_n_iter=1000,
+
+    # --- cluster representatives ---
     top_n_representatives=10,
+
     verbose=True,
 )
 ```
 
-`core` is a `TopicCoreResult` with:
+`core_result` is a `TopicCoreResult` with:
 
-- `phrases_df` – one row per phrase (frequency, cluster, coordinates, examples).
-- `topics_df` – one row per topic cluster (size, representative phrases, etc.).
+- `phrases_df` – a phrase-level DataFrame, one row per phrase (count, embedding, cluster_id, ...).
+- `clusters` – TopicCluster summaries (cluster_id, phrases, phrase_counts, importance_score, ...).
+- `phrase_occurrences` – phrase_occurrence mapping (phrase, kind, pattern, doc_index, sent_index, ...). 
 - `phrase_sentences` – phrase → example sentences mapping.
-- `embedding_geometry` – raw and reduced embeddings.
+- `config` – a config dictionary with all relevant run-time parameters.
 
 ### Timelines
 
 ```python
 builder = ptm.TopicTimelineBuilder(
-    timeline_mode="reading_time",   # "reading_time" | "document_index" | "token_offset"
+    timeline_mode="reading_time",   # "reading_time" | "index" 
     speech_rate_wpm=200,
+    reset_time_per_document=False,
 )
 
-timeline = builder.build(core, sentences_by_doc)
+timeline = builder.build(core_result, sentences_by_doc)
 ```
 
 `timeline` is a `TopicTimelineResult` used primarily for:
 
-- `plot_topic_timeline(core, timeline, cluster_id=...)`.
+- `plot_topic_timeline(timeline, cluster_id=...)`.
 
 ### Visualizations
 
 ```python
-bubble_fig = ptm.plot_phrase_bubble_map(core, max_phrases=200)
-treemap_fig = ptm.plot_phrase_treemap(core, max_phrases_per_topic=15)
-
-cluster_id = int(core.topics_df["cluster_id"].iloc[0])
-timeline_fig = ptm.plot_topic_timeline(core, timeline, cluster_id=cluster_id)
+bubble_fig = ptm.plot_phrase_bubble_map(core_result, max_phrases=200, show_text=False)
+treemap_fig = ptm.plot_phrase_treemap(core_result)
 
 bubble_fig.show()
 treemap_fig.show()
-timeline_fig.show()
+
+
+for i in range(len(core.clusters)):
+    cluster_to_show = core.clusters[i].cluster_id
+    ptm.plot_topic_timeline(timeline, cluster_id=cluster_to_show, time_unit="min").show()
+    
 ```
 
 For dense corpora, you can use the **DataMapPlot** helpers (static PNG or HTML)
 
 via `visualization_datamap.py`:
-
 - `make_datamapplot_static(...)`
 - `make_datamapplot_interactive(...)`
+
+```python
+# Static PNG:
+fig_static, ax = ptm.make_datamapplot_static(
+    core,
+    cluster_name_map=None,  # or labeling_result.cluster_name_map from `ptm.TopicLabeler`
+    save_path="topic_map.png",
+    label_font_size=11,
+    use_medoids=True,
+)
+
+# Interactive topic map with highlighted sentences in the hover
+fig_int = ptm.make_datamapplot_interactive(
+    core,
+    sentences_by_doc=sentences_by_doc,
+    cluster_name_map=None, # or labeling_result.cluster_name_map from `ptm.TopicLabeler`
+    point_size=5,  
+    save_html_path="phrase_topics.html",
+)
+
+```
+
 
 ### Topic labeling with LLMs
 
@@ -421,36 +532,24 @@ The callable can be **sync**:
 
 ```python
 from phrasetopicminer import TopicLabeler
+from openai import OpenAI
+
+client = OpenAI()  # create once, reuse
 
 def simple_llm(prompt: str) -> str:
-    # Call your favourite model here (OpenAI, local model, etc.)
-    # Return raw text with a JSON object: {"title": "...", "description": "..."}
-    raise NotImplementedError
-    # e.g., for OpenAI's Python client you might use:
-    # resp = client.responses.create(...)
-    # return resp.output_text
-    #
-    # See the OpenAI docs for the concrete call.
-    # TopicLabeler will handle JSON parsing / validation.
+    resp = client.responses.create(
+        model="gpt-4.1-mini",
+        temperature=0.1,
+        input=prompt,
+    )
+    # `output_text` is already the full aggregated string
+    return resp.output_text
 
 labeler = TopicLabeler(
     llm=simple_llm,
     max_phrases_per_cluster=25,
     max_sentences_per_cluster=40,
     include_noise=False,
-)
-```
-
-Or **async**:
-
-```python
-
-async def simple_llm_async(prompt: str) -> str:
-    # Same idea, but using an async client call
-    return await some_async_model_call(prompt)
-
-labeler = TopicLabeler(
-    llm=simple_llm_async,
 )
 
 ```
@@ -484,24 +583,21 @@ in a tiny adapter that returns a plain string:
 from langchain_openai import ChatOpenAI
 from phrasetopicminer import TopicLabeler
 
-chat = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
-def langchain_llm(prompt: str) -> str:
-    resp = chat.invoke(prompt)
-    # For ChatOpenAI, resp.content is usually a string
-    return resp.content
+lc_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 labeler = TopicLabeler(
-    llm=langchain_llm,
+    llm=lc_llm,                       # we handle .invoke / .ainvoke internally
     max_phrases_per_cluster=25,
     max_sentences_per_cluster=40,
+    include_noise=False,
 )
 
-# Script:
-labeling = labeler.label_topics(core_result, sentences_by_doc)
+# script:
+# labels = labeler.label_topics(core_result=core, sentences_by_doc)
 
-# Notebook:
-# labeling = await labeler.label_topics_async(core_result, sentences_by_doc)
+# notebook:
+labels = await labeler.label_topics_async(core, sentences_by_doc)
+
 ```
 
 This keeps `TopicLabeler` completely unaware of LangChain; it just sees a
@@ -528,12 +624,13 @@ from phrasetopicminer import TopicLabeler
 
 topic_agent = Agent(
     name="PhraseTopicLabeler",
-    model="gpt-4o-mini",
     instructions=(
-        "You are a topic labeling assistant. Given key phrases and example "
-        "sentences for a single topic, respond ONLY with JSON containing "
-        "'title' and 'description'."
+        "You are a topic labeling assistant. "
+        "Given key phrases and example sentences for a single topic, "
+        "you must respond ONLY with JSON containing 'title' and "
+        "'description'."
     ),
+    model="gpt-4o-mini",
 )
 
 labeler = TopicLabeler(
@@ -541,14 +638,13 @@ labeler = TopicLabeler(
     max_phrases_per_cluster=25,
     max_sentences_per_cluster=40,
     include_noise=False,
-    labeler_name="agents-sdk-topic-labeler",
 )
 
 # In a script, you can still use the sync wrapper:
-labeling = labeler.label_topics(core_result, sentences_by_doc)
+# labeling = labeler.label_topics(core_result, sentences_by_doc)
 
 # In a notebook / async environment:
-# labeling = await labeler.label_topics_async(core_result, sentences_by_doc)
+labeling_result = await labeler.label_topics_async(core_result, sentences_by_doc)
 ```
 
 Under the hood, this path uses:
@@ -559,12 +655,10 @@ Under the hood, this path uses:
     appears as a traced workflow.
     
 
-This is the best option if you want PhraseTopicMiner to be part of a
+This is the best option if you want PhraseTopicMiner to be part of a larger **agentic system** (multi-agent workflows, tools, MCPs, etc.) but don’t want to reinvent the topic labeling step.
 
-larger **agentic system** (multi-agent workflows, tools, MCPs, etc.) but
 
-don’t want to reinvent the topic labeling step.
-
+---
 
 
 ## What is PhraseTopicMiner good for?
@@ -601,6 +695,7 @@ Because topics are defined as **clusters of phrases**, each of which is tied bac
 - “Which sentences in which documents contribute to this conceptual region?”
 - “Where do two topic constellations overlap in the corpus?”
 - “How does this theme appear and transform over time?”
+  
 
 ### 💭 Theoretical background (for the curious) – NPs as carriers of “aboutness”
 
@@ -629,7 +724,6 @@ The 0.1.x series focuses on:
 Planned future work:
 
 - First-class support for non-English languages (custom spaCy models).
-- Better LLM-based labeling via the OpenAI Agents SDK and custom prompts.
 - Integration with RAG / knowledge-graph pipelines (export topic graphs, etc.).
 - A small gallery of “recipes” for:
     - product discovery (user interviews, support tickets),
@@ -663,7 +757,7 @@ If you use PhraseTopicMiner in academic work, you’re encouraged (but not requi
 
 ## About the author
 
-**Ahmad Hashemi** is an NLP data scientist and Principal NLP engineer with a DPhil (PhD) in Philosophy from the University of Oxford, specializing in intellectual history and the history of political ideas.
+[**Ahmad Hashemi**](https://www.linkedin.com/in/ahmad-hashemi-oxford/) is an NLP data scientist and Principal NLP engineer with a DPhil (PhD) in Philosophy from the University of Oxford, specializing in intellectual history and the history of political ideas.
 
 PhraseTopicMiner grew out of a long-standing question:
 
