@@ -351,29 +351,45 @@ as filters in `include_patterns`.
 
 ### Verb-argument patterns (VP)
 
-Verb phrases are optional but useful when you care about actions and relations, not just entities.
+PhraseTopicMiner currently supports a small, **high-precision** set of verb-argument patterns. These are optional but useful when you want to capture **actions** and not just entities.
 
-- **VerbObj** – verb + object: roughly `V … N`
-    
-    Examples:
-    
-    - `chased the fox` (`V D N`)
-    - `delivers services` (`V N`)
-    - `proposes solutions` (`V N`)
-- **VerbPP** – verb + prepositional phrase: `V PP`
-    
-    Examples:
-    
-    - `runs over the hill` (`V P D N`)
-    - `jumped into the pool` (`V P D N`)
-    - `looked at the stars` (`V P D N`)
-- **SubjVerb** – subject–verb: `N V`
-    
-    Examples:
-    
-    - `fox jumps` (`N V`)
-    - `students struggle` (`N V`)
-    - `customers complain` (`N V`)
+### **1. VerbObj (Verb + Object): `V (A|N)* N`**
+
+A lexical verb followed by zero or more adjectives/nouns, ending in a noun head.
+
+This corresponds to classic verb–object chunks.
+
+- Examples:
+    - `“eats delicious food”` → `V A N`
+    - `“buys expensive gifts”` → `V A N`
+    - `“optimize topic models”` → `V N N`
+
+### **2. VerbPP (Verb + Prepositional Phrase): `V (P D* (A|N)* N)`**
+
+A lexical verb followed by a **prepositional phrase**: preposition + optional determiner + base NP.
+
+- Examples:
+    - `“runs over the hill”` → `V P D N`
+    - `“jumped into the pool”` → `V P D N`
+    - `“looked at the stars”` → `V P D N`
+
+### **3. SubjVerb (Subject + non-copular verb)**
+
+A **nominal subject** followed by one or more **non-copular** verbs (no “be” verbs here).
+
+- Examples:
+    - `“students write essays”` → `N V N`
+    - `“people discuss topics”` → `N V N`
+    - `“engineers refactor code”` → `N V N`
+
+### **4. SubjCopula (Subject + copular be-verb)**
+
+A **nominal subject** followed by a form of **copular “be”** (is/are/was/were/…); complements can be adjectives or nouns.
+
+- Examples:
+    - `“the model is unstable”` → `D N V A`
+    - `“the results are promising”` → `D N V A`
+    - `“this approach is a baseline”` → `D N V D N`
 
 NPs carry most of the **conceptual load**; VPs are optional “action lenses” that can enrich topic labeling in more process-oriented corpora (e.g. meeting transcripts, procedures, legal obligations).
 
