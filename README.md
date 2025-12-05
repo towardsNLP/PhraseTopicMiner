@@ -753,7 +753,7 @@ If you use PhraseTopicMiner in academic work, you’re encouraged (but not requi
 
 ## About the author
 
-[**Ahmad Hashemi**](https://www.linkedin.com/in/ahmad-hashemi-oxford/) is an NLP data scientist with a rich background in philosophy, specializing in intellectual history and the history of political ideas.
+[**Ahmad Hashemi**](https://www.linkedin.com/in/ahmad-hashemi-oxford/) is an NLP data scientist with a rich background in philosophy, specializing in intellectual history and the history of ideas.
 
 PhraseTopicMiner grew out of a long-standing question:
 
