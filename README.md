@@ -2,12 +2,11 @@
 
 **Phrase-centric topic mining, clustering, timelines, visualization, and LLM-backed labeling.**
 
-Designed and built by a historian of ideas turned NLP data scientist.
+
 
 > Instead of treating documents as bags of tokens, PhraseTopicMiner treats **multi-word phrases** as the main carriers of meaning — then builds a **geometric map of ideas** over your corpus.
 > 
 
----
 
 ## Why phrase-centric topic modeling?
 
@@ -38,7 +37,7 @@ where they live.
 
 Mathematically, the modeling happens in **phrase space**; interpretation and validation happen at the **phrase–sentence interface**.
 
----
+
 
 ## Core ideas
 
@@ -63,7 +62,7 @@ Mathematically, the modeling happens in **phrase space**; interpretation and val
     The LLM doesn’t replace your judgment; it **proposes labels and explanations** grounded in the cluster evidence.
     
 
----
+
 
 ## Features at a glance
 
@@ -106,7 +105,7 @@ Mathematically, the modeling happens in **phrase space**; interpretation and val
         - key phrases to surface in UI.
     - Designed to work with a simple LLM callable, LangChain chat models, or the OpenAI Agents SDK.
 
----
+
 
 ## Installation
 
@@ -137,7 +136,7 @@ python -m spacy download en_core_web_sm
 
 (If it isn’t installed, PhraseTopicMiner will try to download it the first time you run the smoke test.)
 
----
+
 
 ## Quickstart
 
@@ -197,7 +196,7 @@ For a more complete example (including timelines and labeling), see:
     ```
     
 
----
+
 
 ## Core API overview
 
@@ -573,7 +572,7 @@ larger **agentic system** (multi-agent workflows, tools, MCPs, etc.) but
 
 don’t want to reinvent the topic labeling step.
 
----
+
 
 ## What is PhraseTopicMiner good for?
 
@@ -624,7 +623,7 @@ Because topics are defined as **clusters of phrases**, each of which is tied bac
 > Crucially, the system never forgets the sentences. Every phrase is anchored back to its original sentences, so each cluster can be unfolded into the **discursive context** that gave rise to it. The math happens in phrase space; the *interpretation* happens at the phrase–sentence interface. In Collingwood’s terms, these NP clusters are the recurring answers that reveal the underlying question-space of a corpus: the problems a community keeps circling around, in its own language.
 > 
 
----
+
 
 ## Roadmap
 
@@ -644,7 +643,7 @@ Planned future work:
     - research idea mapping (papers, abstracts),
     - intellectual history (archives across decades).
 
----
+
 
 ## Contributing
 
@@ -659,7 +658,7 @@ Issues and pull requests are welcome.
     history of ideas, etc.) so we can keep the library grounded in real workflows.
     
 
----
+
 
 ## License
 
@@ -667,7 +666,7 @@ MIT License — see `LICENSE` for details.
 
 If you use PhraseTopicMiner in academic work, you’re encouraged (but not required) to cite the project and, where relevant, the associated work on **conceptual history and phrase-centric topic modeling**.
 
----
+
 
 ## About the author
 
